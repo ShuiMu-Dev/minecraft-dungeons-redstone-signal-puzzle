@@ -27,12 +27,12 @@ A single-file, zero-dependency web-based Redstone signal puzzle. Inspired by the
 
 | 章节 / Section | 快速跳转 / Jump |
 |:---:|:---:|
-| 项目简介 / Introduction | [前往](#项目简介--introduction) |
-| 功能特点 / Features | [前往](#功能特点--features) |
-| 快速开始 / Quick Start | [前往](#快速开始--quick-start) |
-| 玩法与原理 / Gameplay & Rules | [前往](#玩法与原理--gameplay--rules) |
-| 技术要点 / Tech Highlights | [前往](#技术要点--tech-highlights) |
-| 已知限制 / Limitations | [前往](#已知限制--known-limitations) |
+| 项目简介 / Introduction | [前往/Go](#项目简介--introduction) |
+| 功能特点 / Features | [前往/Go](#功能特点--features) |
+| 快速开始 / Quick Start | [前往/Go](#快速开始--quick-start) |
+| 玩法与原理 / Gameplay & Rules | [前往/Go](#玩法与原理--gameplay--rules) |
+| 技术要点 / Tech Highlights | [前往/Go](#技术要点--tech-highlights) |
+| 已知限制 / Limitations | [前往/Go](#已知限制--known-limitations) |
 
 </div>
 

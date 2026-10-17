@@ -1,0 +1,767 @@
+<!DOCTYPE html>
+<html lang="zh-CN" data-lang="zh">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<title>《我的世界：地下城》红石信号解谜 / Minecraft Dungeons: Redstone Signal Puzzle</title>
+<style>
+* { box-sizing: border-box; }
+html, body { margin: 0; }
+html {
+  background: radial-gradient(circle at 50% -10%, #24333b 0%, #10171b 45%, #080b0d 100%);
+}
+body {
+  min-height: 100vh;
+  min-height: 100dvh;
+  display: flex;
+  padding: 16px;
+  padding-top: max(16px, env(safe-area-inset-top));
+  padding-right: max(16px, env(safe-area-inset-right));
+  padding-bottom: max(16px, env(safe-area-inset-bottom));
+  padding-left: max(16px, env(safe-area-inset-left));
+  color: #d6e0e5; user-select: none;
+  font-family: system-ui, -apple-system, "PingFang SC", "Microsoft YaHei", sans-serif;
+  -webkit-tap-highlight-color: transparent;
+}
+.app {
+  margin: auto;
+  --cell-w: 42px;
+  --cell-h: 104px;
+  --stone-h: 92px;
+  --sink: 80px;
+  width: 100%; max-width: 540px; text-align: center;
+  background: rgba(20,28,33,.72);
+  border: 1px solid rgba(255,255,255,.07);
+  border-radius: 18px;
+  padding: 24px 18px 20px;
+  box-shadow: 0 24px 60px rgba(0,0,0,.6);
+  position: relative;
+}
+
+/* 顶部布局 */
+.header {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+  margin-bottom: 6px;
+}
+.header-side {
+  width: 64px; /* 固定两侧宽度，保证标题居中 */
+  flex-shrink: 0;
+  display: flex;
+}
+.header-right {
+  justify-content: flex-end;
+}
+h1 {
+  flex: 1;
+  margin: 0;
+  font-size: 17px;
+  letter-spacing: 1px;
+  font-weight: 600;
+  color: #e8f0f4;
+  line-height: 1.3;
+  padding: 0 4px;
+}
+.lang-btn {
+  background: rgba(255,255,255,.08);
+  border: 1px solid rgba(255,255,255,.15);
+  color: #aebcc4;
+  border-radius: 6px;
+  padding: 4px 8px;
+  font-size: 12px;
+  cursor: pointer;
+  transition: .2s;
+  font-family: inherit;
+  white-space: nowrap;
+}
+.lang-btn:hover {
+  background: rgba(255,255,255,.15);
+  color: #fff;
+}
+
+@media (max-width: 480px) {
+  .app {
+    --cell-w: 32px;
+    --cell-h: 82px;
+    --stone-h: 72px;
+    --sink: 62px;
+    padding: 20px 12px 16px;
+  }
+  .header-side { width: 50px; }
+  h1 { font-size: 15px; }
+  .lang-btn { padding: 3px 6px; font-size: 11px;}
+}
+@media (max-width: 360px) {
+  .app {
+    --cell-w: 26px;
+    --cell-h: 68px;
+    --stone-h: 60px;
+    --sink: 52px;
+  }
+}
+@media (max-width: 320px) {
+  body { padding: 8px; }
+  .app {
+    --cell-w: 22px;
+    --cell-h: 58px;
+    --stone-h: 50px;
+    --sink: 44px;
+    padding: 16px 8px 12px;
+    border-radius: 14px;
+  }
+  .header-side { width: 42px; }
+  h1 { font-size: 13px; letter-spacing: 0; }
+  .progress { font-size: 11px; margin-bottom: 14px; }
+  .idx { font-size: 9px; letter-spacing: 0; }
+  .board { gap: 5px; padding: 14px 6px 10px; }
+  .btn { padding: 8px 10px; font-size: 12px; }
+  .footer { margin-top: 14px; }
+  .msg { font-size: 12px; }
+}
+
+.progress { font-size: 12px; color: #6f8794; letter-spacing: 1px; margin-bottom: 18px; }
+.board {
+  display: flex;
+  justify-content: center;
+  gap: clamp(6px, 1.8vw, 12px);
+  padding: 18px 10px 12px;
+  background: rgba(0,0,0,.35);
+  border-radius: 14px;
+  border: 1px solid rgba(255,255,255,.05);
+  box-shadow: inset 0 4px 18px rgba(0,0,0,.5);
+  overflow: hidden;
+}
+.col { display: flex; flex-direction: column; align-items: center; gap: 8px; flex: 0 0 auto; }
+.cell {
+  position: relative;
+  width: var(--cell-w);
+  height: var(--cell-h);
+  overflow: hidden;
+  border-radius: 6px;
+  background:
+    linear-gradient(180deg, rgba(0,0,0,.15) 0%, rgba(0,0,0,.7) 45%, rgba(0,0,0,.95) 100%);
+  box-shadow:
+    inset 0 3px 8px rgba(0,0,0,.85),
+    inset 0 -1px 0 rgba(255,255,255,.05);
+}
+.stone {
+  position: absolute;
+  left: 0; right: 0; bottom: 0;
+  height: var(--stone-h);
+  border-radius: 5px;
+  transform: translateY(0);
+  background: linear-gradient(180deg, #6b4038, #2e1d1a);
+  box-shadow: inset 0 -3px 0 rgba(0,0,0,.55), inset 0 2px 0 rgba(255,255,255,.06);
+  transition:
+    transform .32s cubic-bezier(.34, 1.3, .5, 1),
+    box-shadow .32s ease;
+  will-change: transform;
+}
+.stone.down { transform: translateY(var(--sink)); }
+.stone::after {
+  content: '';
+  position: absolute; inset: 0;
+  border-radius: inherit;
+  opacity: 0;
+  transition: opacity .32s ease;
+  pointer-events: none;
+}
+.stone.up.lit { box-shadow: 0 0 26px rgba(255,90,60,.8), inset 0 -3px 0 rgba(0,0,0,.55); }
+.stone.up.lit::after {
+  opacity: 1;
+  background: linear-gradient(180deg, #ffd0a0 0%, #ff6a4a 28%, #d42a1a 72%, #8a1010 100%);
+  box-shadow: inset 0 2px 0 rgba(255,255,255,.35);
+}
+.stone.source {
+  box-shadow: 0 0 26px rgba(78,200,240,.75), inset 0 -3px 0 rgba(0,0,0,.55);
+}
+.stone.source::after {
+  opacity: 1;
+  background: linear-gradient(180deg, #c8f4ff 0%, #4ec8f0 30%, #1a86c0 75%, #0a4062 100%);
+  box-shadow: inset 0 2px 0 rgba(255,255,255,.4);
+}
+.stone.target.off { background: linear-gradient(180deg, #3a3a3a, #141414); }
+.stone.target.on { box-shadow: 0 0 30px rgba(184,232,88,.9), inset 0 -3px 0 rgba(0,0,0,.55); }
+.stone.target.on::after {
+  opacity: 1;
+  background: linear-gradient(180deg, #f0ffc0 0%, #b8e858 30%, #5ca818 75%, #2a5208 100%);
+  box-shadow: inset 0 2px 0 rgba(255,255,255,.4);
+}
+.idx { font-size: 10px; color: #5d7481; font-variant-numeric: tabular-nums; letter-spacing: .5px; }
+.ops {
+  display: flex; gap: 8px; justify-content: center; flex-wrap: wrap;
+  margin-top: 20px;
+}
+button { font-family: inherit; cursor: pointer; border: none; outline: none; }
+.btn {
+  padding: 11px 16px; border-radius: 10px; font-size: 13.5px; letter-spacing: .5px;
+  border: 1px solid rgba(255,255,255,.1);
+  background: linear-gradient(180deg, #33424b, #222d34);
+  color: #cfdce3; transition: .15s;
+  box-shadow: 0 3px 0 rgba(0,0,0,.35);
+}
+.btn:hover { background: linear-gradient(180deg, #40525d, #2b3841); border-color: rgba(255,255,255,.2); }
+.btn:active { transform: translateY(2px); box-shadow: 0 1px 0 rgba(0,0,0,.35); }
+@media (max-width: 420px) {
+  .btn { padding: 9px 12px; font-size: 12.5px; }
+}
+.footer { display: flex; gap: 10px; justify-content: center; margin-top: 18px; flex-wrap: wrap; }
+.btn.ghost {
+  background: transparent; border: 1px solid rgba(255,255,255,.13);
+  box-shadow: none; color: #8ea3ae; padding: 9px 20px; font-size: 13px;
+}
+.btn.ghost:hover { color: #d6e0e5; border-color: rgba(255,255,255,.3); background: rgba(255,255,255,.04); }
+.btn.hint {
+  background: linear-gradient(180deg, #d79a2a, #a56f14);
+  border-color: rgba(255,220,150,.35); color: #241a05; font-weight: 600;
+  animation: pulse 1.8s infinite;
+}
+@keyframes pulse {
+  0%, 100% { box-shadow: 0 3px 0 #6b480c, 0 0 14px rgba(215,154,42,.3); }
+  50%      { box-shadow: 0 3px 0 #6b480c, 0 0 26px rgba(215,154,42,.65); }
+}
+.hidden { display: none !important; }
+.msg { min-height: 20px; margin-top: 14px; font-size: 13px; color: #7d939f; letter-spacing: .5px; }
+.msg.ok { color: #63d68a; }
+.overlay {
+  position: fixed; inset: 0; z-index: 10;
+  background: rgba(3,6,8,.78); backdrop-filter: blur(4px);
+  display: flex; align-items: center; justify-content: center;
+  padding: 20px;
+  padding-top: max(20px, env(safe-area-inset-top));
+  padding-bottom: max(20px, env(safe-area-inset-bottom));
+}
+.modal {
+  width: 100%; max-width: 460px;
+  max-height: 84vh;
+  max-height: 84dvh;
+  overflow-y: auto;
+  background: linear-gradient(180deg, #1c262c, #141b20);
+  border: 1px solid rgba(255,255,255,.1);
+  border-radius: 16px; padding: 22px;
+  box-shadow: 0 30px 70px rgba(0,0,0,.7);
+  text-align: left;
+}
+@media (max-height: 560px) {
+  .overlay { padding: 10px; }
+  .modal {
+    padding: 16px;
+    max-height: 94vh;
+    max-height: 94dvh;
+    border-radius: 12px;
+  }
+  .modal h2 { font-size: 15px; margin-bottom: 10px; }
+  .modal h4 { margin: 12px 0 6px; }
+  .modal p { font-size: 13px; line-height: 1.65; }
+  .modal li { font-size: 13px; line-height: 1.75; }
+}
+.modal h2 { margin: 0 0 14px; font-size: 17px; color: #f0c674; letter-spacing: 1px; }
+.modal h4 { margin: 16px 0 8px; font-size: 13px; color: #9fb6c2; letter-spacing: 1px; }
+.modal h4:first-child { margin-top: 0; }
+.modal p { font-size: 13.5px; line-height: 1.75; color: #b9c9d2; margin: 8px 0; }
+.modal ul { margin: 8px 0; padding-left: 20px; }
+.modal li { font-size: 13.5px; line-height: 1.9; color: #b9c9d2; }
+.modal b { color: #e6a94a; }
+.steps {
+  display: inline-block;
+  margin: 12px 0;
+  padding: 10px 16px;
+  border-radius: 8px;
+  font-size: 13px;
+  letter-spacing: 1px;
+  background: rgba(230,169,74,.13);
+  border: 1px solid rgba(230,169,74,.35);
+  color: #f0c674;
+  line-height: 1.8;
+}
+.note { font-size: 12px; color: #6f8794; }
+.modal .btn { margin-top: 18px; width: 100%; padding: 12px; }
+.modal .btn-row { display: flex; gap: 10px; margin-top: 18px; }
+.modal .btn-row .btn { margin-top: 0; flex: 1; }
+.modal .btn-row .btn.ghost { padding: 12px; }
+</style>
+</head>
+<body>
+
+<div class="app">
+  <div class="header">
+    <div class="header-side"></div>
+    <h1 id="titleText"></h1>
+    <div class="header-side header-right">
+      <button class="lang-btn" id="langToggle"></button>
+    </div>
+  </div>
+  
+  <div class="progress" id="progress"></div>
+
+  <div class="board" id="board"></div>
+  <div class="ops" id="ops"></div>
+
+  <div class="footer">
+    <button class="btn ghost" id="refreshBtn"></button>
+    <button class="btn hint hidden" id="hintBtn"></button>
+  </div>
+
+  <div class="msg" id="msg"></div>
+</div>
+
+<div class="overlay hidden" id="overlay">
+  <div class="modal">
+    <h2 id="modalTitle"></h2>
+    <div id="modalBody"></div>
+    <button class="btn" id="modalClose"></button>
+  </div>
+</div>
+
+<script>
+const $ = id => document.getElementById(id);
+
+const flipAt = (s, idxs) => s.map((v, i) => idxs.includes(i) ? 1 - v : v);
+const rotL  = s => s.map((_, i) => s[(i + 1) % s.length]);
+const rotR  = s => s.map((_, i) => s[(i - 1 + s.length) % s.length]);
+
+function computeLit(s) {
+  const lit = [];
+  let power = true;
+  for (let i = 0; i < s.length; i++) {
+    lit[i] = power && s[i] === 1;
+    power = lit[i];
+  }
+  return lit;
+}
+
+// 多语言字典
+const I18N = {
+  zh: {
+    title: "《我的世界：地下城》红石信号解谜",
+    langBtn: "English",
+    progress: (current, total) => `第 ${current} 关 / 共 ${total} 关`,
+    goalMsg: "目标：让红石信号从信号源一路传到最右边的目标灯。",
+    level1Pass: "✓ 第 1 关通过！正在进入第 2 关…",
+    allPass: "✓ 全部机关已解开！",
+    refreshBtn: "刷新",
+    hintBtn: "答案",
+    modalConfirmTitle: "你真的要看答案吗？",
+    modalConfirmBody: "<p>再思考思考吧！</p>",
+    btnYes: "还是看看吧",
+    btnNo: "再思考思考",
+    modalHintTitle: "答案",
+    modalHintPrinciple: "机关原理",
+    modalHintSource: "<b>信号源 (Source)</b>：最左侧，常亮，作为红石信号的起始点。",
+    modalHintSignalRule: "信号向右传播：只有「升起」且左侧有信号时红石方块才会亮起；中间断开一格，后面就全灭。升起但没通电的是暗红色的。",
+    modalHintTarget: "目标是让最右边的目标灯亮起，也就是信号一路传到末尾。",
+    modalHintShortest: "当前状态的最短解法",
+    modalHintAlreadyWin: "当前已经是通关状态了。",
+    modalHintSteps: (steps) => `共 ${steps} 步，按顺序点这些按钮即可通关。`,
+    modalWinTitle: "恭喜你通关本解谜游戏",
+    modalWinBody: "<p>本游戏参考《我的世界：地下城》（Minecraft Dungeons）“潮湿洞穴”（Soggy Cave）关卡中的活塞机关设计。</p>",
+    btnGotIt: "知道了",
+    btnRestart: "重新开始",
+    srcLabel: "信号",
+    tgtLabel: "目标",
+    level1Btn1: "激活中间的红石方块，使其状态改变（升起变落下，落下变升起）",
+    level1Btn2: "所有红石方块整体向左平移一格，最左边移出的方块绕回最右边",
+    level2Btn1: "所有红石方块整体向左平移一格，最左边移出的方块绕回最右边",
+    level2Btn2: "激活第 2、4 个红石方块",
+    level2Btn3: "激活第 2、3、4 个红石方块",
+    level2Btn4: "所有红石方块整体向右平移一格，最右边移出的方块绕回最左边",
+  },
+  en: {
+    title: "Minecraft Dungeons: Redstone Signal Puzzle",
+    langBtn: "中文",
+    progress: (current, total) => `Level ${current} / ${total}`,
+    goalMsg: "Goal: Make the Redstone signal travel from the Source to the Target lamp on the right.",
+    level1Pass: "✓ Level 1 passed! Entering Level 2...",
+    allPass: "✓ All mechanisms unlocked!",
+    refreshBtn: "Refresh",
+    hintBtn: "Answer",
+    modalConfirmTitle: "Are you sure you want to see the answer?",
+    modalConfirmBody: "<p>Think about it a bit more!</p>",
+    btnYes: "Show me anyway",
+    btnNo: "Keep thinking",
+    modalHintTitle: "Answer",
+    modalHintPrinciple: "Mechanism Principle",
+    modalHintSource: "<b>Source</b>: Far left, always on, the starting point of the Redstone signal.",
+    modalHintSignalRule: "Signal propagates to the right: A Redstone Block lights up only if it's 'raised' and the block to its left has power. If there's a gap, everything after it turns off. A raised block without power is dark red.",
+    modalHintTarget: "Goal: Make the Target lamp on the far right light up, meaning the signal reaches the end.",
+    modalHintShortest: "Shortest solution for current state",
+    modalHintAlreadyWin: "Already in a winning state.",
+    modalHintSteps: (steps) => `${steps} steps in total. Click these buttons in order to win.`,
+    modalWinTitle: "Congratulations on beating the puzzle!",
+    modalWinBody: "<p>This game is inspired by the piston mechanisms in the 'Soggy Cave' level of Minecraft Dungeons.</p>",
+    btnGotIt: "Got it",
+    btnRestart: "Restart",
+    srcLabel: "Source",
+    tgtLabel: "Target",
+    level1Btn1: "Activate the middle Redstone Block (raised becomes lowered, lowered becomes raised)",
+    level1Btn2: "Shift all Redstone Blocks left by one space (the block that falls off wraps around to the right)",
+    level2Btn1: "Shift all Redstone Blocks left by one space (the block that falls off wraps around to the right)",
+    level2Btn2: "Activate the 2nd and 4th Redstone Blocks",
+    level2Btn3: "Activate the 2nd, 3rd, and 4th Redstone Blocks",
+    level2Btn4: "Shift all Redstone Blocks right by one space (the block that falls off wraps around to the left)",
+  }
+};
+
+let currentLang = 'zh';
+const t = () => I18N[currentLang];
+
+const LEVELS = [
+  {
+    count: 3,
+    ops: [
+      { label: '1', fn: s => { const n = s.slice(); n[1] = 1 - n[1]; return n; } },
+      { label: '2', fn: s => rotL(s) }
+    ],
+    target: [1, 1, 1]
+  },
+  {
+    count: 5,
+    ops: [
+      { label: '1', fn: s => rotL(s) },
+      { label: '2', fn: s => flipAt(s, [1, 3]) },
+      { label: '3', fn: s => flipAt(s, [1, 2, 3]) },
+      { label: '4', fn: s => rotR(s) }
+    ],
+    target: [1, 1, 1, 1, 1]
+  }
+];
+
+let levelIdx = 0;
+let state = [];
+let stoneEls = [];
+let clicks = 0;
+let hintShown = false;
+let hintConfirmed = false;
+let busy = false;
+let lastModalState = ''; 
+
+function bfs(start, ops, target) {
+  const key = a => a.join('');
+  const tk = key(target);
+  if (key(start) === tk) return [];
+
+  const prev = new Map([[key(start), null]]);
+  const queue = [start];
+
+  while (queue.length) {
+    const cur = queue.shift();
+    for (let i = 0; i < ops.length; i++) {
+      const nx = ops[i].fn(cur);
+      const nk = key(nx);
+      if (prev.has(nk)) continue;
+      prev.set(nk, { from: key(cur), op: i });
+      if (nk === tk) {
+        const path = [];
+        let c = nk;
+        while (prev.get(c)) {
+          const p = prev.get(c);
+          path.unshift(p.op);
+          c = p.from;
+        }
+        return path;
+      }
+      queue.push(nx);
+    }
+  }
+  return null;
+}
+
+function randomStart(level) {
+  const tk = level.target.join('');
+  for (let t = 0; t < 800; t++) {
+    const s = Array.from({ length: level.count }, () => Math.random() < 0.5 ? 1 : 0);
+    if (s.join('') === tk) continue;
+    if (bfs(s, level.ops, level.target)) return s;
+  }
+  return level.target.map((v, i) => i === 0 ? 1 - v : v);
+}
+
+function makeCol(label) {
+  const col = document.createElement('div');
+  col.className = 'col';
+
+  const cell = document.createElement('div');
+  cell.className = 'cell';
+
+  const idx = document.createElement('div');
+  idx.className = 'idx';
+  idx.textContent = label;
+
+  col.appendChild(cell);
+  col.appendChild(idx);
+  return col;
+}
+
+function buildBoard() {
+  const board = $('board');
+  board.innerHTML = '';
+  stoneEls = [];
+
+  const srcCol = makeCol(t().srcLabel);
+  const srcStone = document.createElement('div');
+  srcStone.className = 'stone source';
+  srcCol.querySelector('.cell').appendChild(srcStone);
+  stoneEls.push(srcStone);
+  board.appendChild(srcCol);
+
+  const n = LEVELS[levelIdx].count;
+  for (let i = 0; i < n; i++) {
+    const col = makeCol(String(i + 1));
+    const st = document.createElement('div');
+    st.className = 'stone down';
+    col.querySelector('.cell').appendChild(st);
+    stoneEls.push(st);
+    board.appendChild(col);
+  }
+
+  const tgtCol = makeCol(t().tgtLabel);
+  const tgtStone = document.createElement('div');
+  tgtStone.className = 'stone target off';
+  tgtCol.querySelector('.cell').appendChild(tgtStone);
+  stoneEls.push(tgtStone);
+  board.appendChild(tgtCol);
+}
+
+function updateBoard() {
+  const lit = computeLit(state);
+  const n = state.length;
+
+  for (let i = 0; i < n; i++) {
+    const el = stoneEls[i + 1];
+    const v = state[i];
+    let cls = 'stone ';
+    if (v === 1) cls += lit[i] ? 'up lit' : 'up unlit';
+    else cls += 'down';
+    if (el.className !== cls) el.className = cls;
+  }
+
+  const tgt = stoneEls[n + 1];
+  const tgtOn = lit[n - 1];
+  const tgtCls = 'stone target ' + (tgtOn ? 'on' : 'off');
+  if (tgt.className !== tgtCls) tgt.className = tgtCls;
+}
+
+function renderOps() {
+  const opsEl = $('ops');
+  opsEl.innerHTML = '';
+  LEVELS[levelIdx].ops.forEach((op, i) => {
+    const b = document.createElement('button');
+    b.className = 'btn';
+    b.textContent = op.label;
+    b.onclick = () => press(i);
+    opsEl.appendChild(b);
+  });
+}
+
+function setMsg(text, cls = '') {
+  const m = $('msg');
+  m.textContent = text;
+  m.className = 'msg ' + cls;
+}
+
+function updateUI() {
+  $('titleText').textContent = t().title;
+  $('langToggle').textContent = t().langBtn;
+  $('refreshBtn').textContent = t().refreshBtn;
+  $('hintBtn').textContent = t().hintBtn;
+  
+  $('progress').textContent = t().progress(levelIdx + 1, LEVELS.length);
+  
+  const idxNodes = document.querySelectorAll('.idx');
+  if (idxNodes.length > 0) {
+    idxNodes[0].textContent = t().srcLabel;
+    idxNodes[idxNodes.length - 1].textContent = t().tgtLabel;
+  }
+
+  if (!busy) {
+    const curMsg = $('msg').textContent;
+    if (!curMsg || curMsg === I18N['zh'].goalMsg || curMsg === I18N['en'].goalMsg) {
+       setMsg(t().goalMsg);
+    }
+  }
+
+  if (!$('overlay').classList.contains('hidden')) {
+    if (lastModalState === 'confirm') {
+      showConfirmModal();
+    } else if (lastModalState === 'hint') {
+      showHint();
+    } else if (lastModalState === 'win') {
+      showWin();
+    }
+  }
+}
+
+function startLevel(idx) {
+  levelIdx = idx;
+  busy = false;
+  clicks = 0;
+  hintShown = false;
+  hintConfirmed = false;
+  lastModalState = '';
+  closeModal();
+
+  const level = LEVELS[idx];
+  state = randomStart(level);
+
+  buildBoard();
+  renderOps();
+
+  requestAnimationFrame(() => {
+    requestAnimationFrame(() => {
+      updateBoard();
+      updateUI();
+    });
+  });
+  
+  setMsg(t().goalMsg);
+}
+
+function press(i) {
+  if (busy) return;
+
+  const before = state.join('');
+  state = LEVELS[levelIdx].ops[i].fn(state);
+  const after = state.join('');
+
+  if (before === after) return;
+
+  clicks++;
+  updateBoard();
+
+  if (checkWin()) return;
+  if (!hintShown && clicks >= 100) showHintBtn();
+}
+
+function checkWin() {
+  const lit = computeLit(state);
+  if (!lit[state.length - 1]) return false;
+
+  if (levelIdx < LEVELS.length - 1) {
+    busy = true;
+    setMsg(t().level1Pass, 'ok');
+    setTimeout(() => startLevel(levelIdx + 1), 1100);
+  } else {
+    busy = true;
+    setMsg(t().allPass, 'ok');
+    setTimeout(showWin, 500);
+  }
+  return true;
+}
+
+function showHintBtn() {
+  if (hintShown || busy) return;
+  hintShown = true;
+  $('hintBtn').classList.remove('hidden');
+}
+
+function closeModal() {
+  $('overlay').classList.add('hidden');
+  $('modalClose').classList.remove('hidden');
+  lastModalState = '';
+}
+
+function confirmHint() {
+  if (hintConfirmed) {
+    showHint();
+    return;
+  }
+  showConfirmModal();
+}
+
+function showConfirmModal() {
+  lastModalState = 'confirm';
+  $('modalTitle').textContent = t().modalConfirmTitle;
+  $('modalBody').innerHTML = `
+    ${t().modalConfirmBody}
+    <div class="btn-row">
+      <button class="btn ghost" id="confirmYes">${t().btnYes}</button>
+      <button class="btn ghost" id="confirmNo">${t().btnNo}</button>
+    </div>
+  `;
+  $('modalClose').classList.add('hidden');
+  $('overlay').classList.remove('hidden');
+
+  $('confirmYes').onclick = () => {
+    hintConfirmed = true;
+    showHint();
+  };
+  $('confirmNo').onclick = () => { closeModal(); };
+}
+
+function showHint() {
+  lastModalState = 'hint';
+  const level = LEVELS[levelIdx];
+  const path = bfs(state, level.ops, level.target);
+  
+  let principleHtml = `<h4>${t().modalHintPrinciple}</h4><ul>`;
+  principleHtml += `<li>${t().modalHintSource}</li>`;
+  
+  const btnOps = level.ops.map((op, i) => {
+    if (levelIdx === 0) {
+      return i === 0 ? t().level1Btn1 : t().level1Btn2;
+    } else {
+      return i === 0 ? t().level2Btn1 : i === 1 ? t().level2Btn2 : i === 2 ? t().level2Btn3 : t().level2Btn4;
+    }
+  });
+  
+  btnOps.forEach((desc, i) => {
+    principleHtml += `<li><b>${currentLang === 'zh' ? '按钮' : 'Button'} ${i+1}</b>: ${desc}</li>`;
+  });
+  principleHtml += `</ul>`;
+  principleHtml += `<p>${t().modalHintSignalRule}</p>`;
+  principleHtml += `<p>${t().modalHintTarget}</p>`;
+
+  let html = principleHtml;
+  html += `<h4>${t().modalHintShortest}</h4>`;
+
+  if (!path || path.length === 0) {
+    html += `<p>${t().modalHintAlreadyWin}</p>`;
+  } else {
+    const labels = path.map(opIdx => level.ops[opIdx].label);
+    html += `<div class="steps">${labels.join(' | ')}</div>`;
+    html += `<p class="note">${t().modalHintSteps(path.length)}</p>`;
+  }
+
+  $('modalTitle').textContent = t().modalHintTitle;
+  $('modalBody').innerHTML = html;
+
+  const btn = $('modalClose');
+  btn.textContent = t().btnGotIt;
+  btn.onclick = closeModal;
+  $('modalClose').classList.remove('hidden');
+  $('overlay').classList.remove('hidden');
+}
+
+function showWin() {
+  lastModalState = 'win';
+  $('modalTitle').textContent = t().modalWinTitle;
+  $('modalBody').innerHTML = t().modalWinBody;
+  
+  const btn = $('modalClose');
+  btn.textContent = t().btnRestart;
+  btn.onclick = () => { closeModal(); startLevel(0); };
+  $('modalClose').classList.remove('hidden');
+  $('overlay').classList.remove('hidden');
+}
+
+$('refreshBtn').onclick = () => startLevel(levelIdx);
+$('hintBtn').onclick = confirmHint;
+$('overlay').onclick = e => { if (e.target === $('overlay')) closeModal(); };
+
+$('langToggle').onclick = () => {
+  currentLang = currentLang === 'zh' ? 'en' : 'zh';
+  document.documentElement.setAttribute('data-lang', currentLang);
+  updateUI();
+  if (!$('overlay').classList.contains('hidden')) {
+    if (lastModalState === 'confirm') showConfirmModal();
+    else if (lastModalState === 'hint') showHint();
+    else if (lastModalState === 'win') showWin();
+  }
+};
+
+document.documentElement.setAttribute('data-lang', currentLang);
+startLevel(0);
+</script>
+</body>
+</html>
